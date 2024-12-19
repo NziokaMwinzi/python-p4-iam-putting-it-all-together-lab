@@ -4,6 +4,7 @@ import pytest
 from app import app
 from models import db, User, Recipe
 
+
 class TestUser:
     '''User in models.py'''
 
@@ -11,7 +12,6 @@ class TestUser:
         '''has attributes username, _password_hash, image_url, and bio.'''
         
         with app.app_context():
-
             User.query.delete()
             db.session.commit()
 
@@ -58,7 +58,6 @@ class TestUser:
         '''requires each record to have a username.'''
 
         with app.app_context():
-
             User.query.delete()
             db.session.commit()
 
@@ -68,10 +67,9 @@ class TestUser:
                 db.session.commit()
 
     def test_requires_unique_username(self):
-        '''requires each record to have a username.'''
+        '''requires each record to have a unique username.'''
 
         with app.app_context():
-
             User.query.delete()
             db.session.commit()
 
@@ -86,12 +84,17 @@ class TestUser:
         '''has records with lists of recipes records attached.'''
 
         with app.app_context():
-
             User.query.delete()
+            Recipe.query.delete()
             db.session.commit()
 
             user = User(username="Prabhdip")
 
+            # Add the user to the database first to generate an ID
+            db.session.add(user)
+            db.session.commit()
+
+            # Associate recipes with the user
             recipe_1 = Recipe(
                 title="Delicious Shed Ham",
                 instructions="""Or kind rest bred with am shed then. In""" + \
@@ -103,7 +106,8 @@ class TestUser:
                     """ smallness northward situation few her certainty""" + \
                     """ something.""",
                 minutes_to_complete=60,
-                )
+                user_id=user.id  # Set user_id explicitly
+            )
             recipe_2 = Recipe(
                 title="Hasty Party Ham",
                 instructions="""As am hastily invited settled at limited""" + \
@@ -113,19 +117,20 @@ class TestUser:
                              """ unpacked be advanced at. Confined in declared""" + \
                              """ marianne is vicinity.""",
                 minutes_to_complete=30,
-                )
+                user_id=user.id  # Set user_id explicitly
+            )
 
-            user.recipes.append(recipe_1)
-            user.recipes.append(recipe_2)
-
-            db.session.add_all([user, recipe_1, recipe_2])
+            db.session.add_all([recipe_1, recipe_2])
             db.session.commit()
 
-            # check that all were created in db
-            assert(user.id)
-            assert(recipe_1.id)
-            assert(recipe_2.id)
+            # Reload the user from the database to verify relationships
+            db.session.refresh(user)
 
-            # check that recipes were saved to user
-            assert(recipe_1 in user.recipes)
-            assert(recipe_2 in user.recipes)
+            # Check that all were created in the database
+            assert user.id
+            assert recipe_1.id
+            assert recipe_2.id
+
+            # Check that recipes were saved to user
+            assert recipe_1 in user.recipes
+            assert recipe_2 in user.recipes
